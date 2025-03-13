@@ -1,16 +1,12 @@
 "use client";
-import { useState, useEffect } from "react";
-import axios from "axios";
-import FoodCategory from "@/components/FoodCategory";
-
-
-
+import FoodCategory from "@/app/(food-menu)/_features/FoodCategory";
+import FoodsByCategory from "@/app/(food-menu)/_features/FoodsByCategory";
 
 export default function Main() {
-
   return (
     <div className="p-4">
       <FoodCategory />
+      <FoodsByCategory />
     </div>
   );
 }

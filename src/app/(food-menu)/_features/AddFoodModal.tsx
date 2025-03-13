@@ -38,22 +38,31 @@ export default function AddFoodModal({
       formData.append("categoryId", selectedCategory);
       formData.append("image", newFood.image);
 
-      const response = await axios.post("http://localhost:3030/foods", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const response = await axios.post(
+        "http://localhost:3030/foods",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
       if (onAddFood) {
         onAddFood(response.data.food);
       }
-      setNewFood({ foodName: "", price: "", ingredients: "", image: null, imageUrl: "" });
+      setNewFood({
+        foodName: "",
+        price: "",
+        ingredients: "",
+        image: null,
+        imageUrl: "",
+      });
       setSuccessMessage(response.data.message);
 
       onClose();
-
     } catch (error) {
       console.error("Error adding food:", error);
-      setSuccessMessage("Хоол нэмэхэд алдаа гарлаа");
+      setSuccessMessage("error adding food");
     } finally {
       setLoading(false);
     }
@@ -62,7 +71,11 @@ export default function AddFoodModal({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setNewFood({ ...newFood, image: file, imageUrl: URL.createObjectURL(file) });
+      setNewFood({
+        ...newFood,
+        image: file,
+        imageUrl: URL.createObjectURL(file),
+      });
     }
   };
 
@@ -76,7 +89,9 @@ export default function AddFoodModal({
               type="text"
               name="foodName"
               value={newFood.foodName}
-              onChange={(e) => setNewFood({ ...newFood, foodName: e.target.value })}
+              onChange={(e) =>
+                setNewFood({ ...newFood, foodName: e.target.value })
+              }
               placeholder="Food Name"
               className="border p-2 w-50 rounded"
               required
@@ -85,7 +100,9 @@ export default function AddFoodModal({
               type="number"
               name="price"
               value={newFood.price}
-              onChange={(e) => setNewFood({ ...newFood, price: e.target.value })}
+              onChange={(e) =>
+                setNewFood({ ...newFood, price: e.target.value })
+              }
               placeholder="Food Price"
               className="border p-2 w-44 rounded"
               required
@@ -96,7 +113,9 @@ export default function AddFoodModal({
             type="text"
             name="ingredients"
             value={newFood.ingredients}
-            onChange={(e) => setNewFood({ ...newFood, ingredients: e.target.value })}
+            onChange={(e) =>
+              setNewFood({ ...newFood, ingredients: e.target.value })
+            }
             placeholder="Ingredients"
             className="border p-2 rounded"
             required
@@ -104,17 +123,35 @@ export default function AddFoodModal({
 
           {newFood.imageUrl ? (
             <div className="mt-4 flex justify-center border">
-              <img src={newFood.imageUrl} alt="Preview" className="w-[90%] object-cover rounded" />
+              <img
+                src={newFood.imageUrl}
+                alt="Preview"
+                className="w-[90%] object-cover rounded"
+              />
             </div>
           ) : (
-            <input type="file" name="image" onChange={handleImageChange} className="border p-2 rounded" required />
+            <input
+              type="file"
+              name="image"
+              onChange={handleImageChange}
+              className="border p-2 rounded"
+              required
+            />
           )}
 
           <div className="flex justify-end gap-2">
-            <button type="button" className="bg-gray-400 text-white px-4 py-2 rounded" onClick={onClose}>
+            <button
+              type="button"
+              className="bg-gray-400 text-white px-4 py-2 rounded"
+              onClick={onClose}
+            >
               Cancel
             </button>
-            <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded disabled:opacity-50" disabled={loading}>
+            <button
+              type="submit"
+              className="bg-green-500 text-white px-4 py-2 rounded disabled:opacity-50"
+              disabled={loading}
+            >
               {loading ? "Adding..." : "Add"}
             </button>
           </div>
