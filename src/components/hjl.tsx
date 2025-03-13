@@ -1,175 +1,252 @@
-// 'use client';
-// import { useState, useEffect } from 'react';
-// import axios from 'axios';
+"use client";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { PenIcon } from "lucide-react";
+import
+AddFoodModal from "@/components/FoodCards";
 
-// export default function Category({ setSelectedCategory, openAddFoodModal }: {
-//     setSelectedCategory: (id: string) => void,
-//     openAddFoodModal: () => void
-// }) {
-//     const [category, setCategory] = useState<Category>({ categoryName: '' });
-//     const [categories, setCategories] = useState<Category[]>([]);
-//     const [showModal, setShowModal] = useState(false);
-//     const [loading, setLoading] = useState(false);
-//     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-//     const [dropdown, setDropdown] = useState<string | null>(null);
-//     const [selectedCategory, setSelected] = useState<string | null>(null);
+// Types
+type Category = {
+    _id: string;
+    categoryName: string;
+    foods?: Food[];
+};
 
-//     useEffect(() => {
-//         fetchCategories();
-//     }, []);
+type Food = {
+    _id: string;
+    foodName: string;
+    price: number;
+    ingredients: string;
+    image?: string;
+    categoryId: string;
+};
 
+export default function FoodsByCategory() {
+    const [categoriesWithFoods, setCategoriesWithFoods] = useState<Category[]>([]);
+    const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+    const [editingFood, setEditingFood] = useState<Food | null>(null);
+    const [dropdown, setDropdown] = useState<string | null>(null);
+    const [addingCategory, setAddingCategory] = useState<string | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [showAddFoodModal, setShowAddFoodModal] = useState(false);
 
-//     const fetchCategories = async () => {
-//         try {
-//             const response = await axios.get('http://localhost:4040/category'); // category API руу хүсэлт
-//             const categoriesWithFoodCount = await Promise.all(response.data.map(async (cat: any) => {
-//                 // Хоолны тоог авах
-//                 const foodResponse = await axios.get(`http://localhost:4040/category/${cat._id}/food`); // category ID ашиглан хоолны тоог авах
-//                 return { ...cat, foodCount: foodResponse.data.length }; // Хоолны тоог category объектод нэмэх
-//             }));
-//             setCategories(categoriesWithFoodCount);
-//         } catch (error) {
-//             console.error('Error fetching categories:', error);
-//         }
-//     };
+    useEffect(() => {
+        fetchCategoriesWithFoods();
+    }, []);
 
+    const fetchCategoriesWithFoods = async () => {
+        try {
+            const categoryResponse = await axios.get("http://localhost:3030/category");
+            const categories = categoryResponse.data.data;
 
-//     const handleSubmit = async (event: React.FormEvent) => {
-//         event.preventDefault();
-//         setLoading(true);
+            const categoriesData = await Promise.all(
+                categories.map(async (category: Category) => {
+                    try {
+                        const foodResponse = await axios.get<{ foods: Food[] }>(
+                            `http://localhost:3030/foods/${category._id}/foods`
+                        );
+                        return { ...category, foods: foodResponse.data.foods || [] };
+                    } catch (error) {
+                        return { ...category, foods: [] };
+                    }
+                })
+            );
+            setCategoriesWithFoods(categoriesData);
+        } catch (error) {
+            console.error("Error fetching categories with foods:", error);
+        }
+    };
 
-//         try {
-//             if (editingCategory) {
-//                 await axios.put(`http://localhost:4040/category/${editingCategory._id}`, { categoryName: category.categoryName });
-//             } else {
-//                 await axios.post('http://localhost:4040/category', category, {
-//                     headers: { 'Content-Type': 'application/json' },
-//                 });
-//             }
-//             setCategory({ categoryName: '' });
-//             setShowModal(false);
-//             setEditingCategory(null);
-//             fetchCategories();
-//         } catch (error) {
-//             console.error('Error uploading category:', error);
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
+    const handleEdit = (food: Food) => {
+        setEditingFood(food);
+        setImagePreview(food.image || null); // Show the current image preview on edit
+    };
 
-//     const handleDelete = async (id?: string) => {
-//         if (!id) return;
-//         if (!window.confirm("Are you sure you want to delete this category?")) return;
+    const handleSave = async (updatedFood: Food) => {
+        try {
+            console.log("Saving food with ID:", updatedFood._id); // 调试信息
 
-//         try {
-//             await axios.delete(`http://localhost:4040/category/${id}`);
-//             fetchCategories();
-//             if (selectedCategory === id) setSelected(null);
-//         } catch (error) {
-//             console.error("Error deleting category:", error);
-//         }
-//     };
+            const formData = new FormData();
+            formData.append("foodName", updatedFood.foodName);
+            formData.append("price", updatedFood.price.toString());
+            formData.append("ingredients", updatedFood.ingredients);
 
-//     return (
-//         <div className="p-4 bg-gray-100 max-w-[850px] w-[100%] m-auto rounded-lg">
-//             <h3 className="max-w-[800px] w-[100%] m-auto my-2 text-lg font-semibold">Dishes category</h3>
-//             <div className="max-w-[800px] w-[100%] m-auto flex flex-wrap gap-3 items-center">
-//                 {categories.map((cat) => (
-//                     <div key={cat._id} className="relative dropdown-container">
-//                         <span
-//                             onClick={() => setDropdown(dropdown === cat._id! ? null : cat._id!)}
-//                             className={`px-3 py-1 rounded-lg cursor-pointer transition ${selectedCategory === cat._id ? 'bg-blue-300' : 'bg-gray-200 hover:bg-gray-300'}`}
-//                         >
-//                             {cat.categoryName} ({cat.foodCount || 0}) Хоолны тоог харуулах
-//                         </span>
+            if (imagePreview && imagePreview.startsWith("data:image")) {
+                // Convert data URL to Blob
+                const blob = await fetch(imagePreview).then((res) => res.blob());
+                formData.append("image", blob, "image.png");
+            }
 
-//                         {dropdown === cat._id && (
-//                             <div className="absolute bg-white shadow-lg rounded-lg p-2 mt-1 w-40 z-10">
-//                                 <button
-//                                     className="block px-3 py-1 text-blue-500 hover:bg-gray-100 w-full text-left"
-//                                     onClick={() => {
-//                                         setEditingCategory(cat);
-//                                         setCategory({ categoryName: cat.categoryName });
-//                                         setShowModal(true);
-//                                         setDropdown(null);
-//                                     }}
-//                                 >
-//                                     Edit
-//                                 </button>
-//                                 <button
-//                                     className="block px-3 py-1 text-red-500 hover:bg-gray-100 w-full text-left"
-//                                     onClick={() => handleDelete(cat._id)}
-//                                 >
-//                                     Delete
-//                                 </button>
-//                                 <button
-//                                     className="block px-3 py-1 text-green-500 hover:bg-gray-100 w-full text-left"
-//                                     onClick={() => {
-//                                         setSelectedCategory(cat._id!);
-//                                         openAddFoodModal();
-//                                         setDropdown(null);
-//                                     }}
-//                                 >
-//                                     Add Food
-//                                 </button>
-//                             </div>
-//                         )}
-//                     </div>
-//                 ))}
+            console.log("Sending PUT request to server..."); // 调试信息
+            const response = await axios.put(`http://localhost:3030/foods/${updatedFood._id}`, formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
 
-//                 <button
-//                     onClick={() => {
-//                         setEditingCategory(null);
-//                         setCategory({ categoryName: '' });
-//                         setShowModal(true);
-//                     }}
-//                     className="bg-red-500 text-white px-4 py-2 rounded-full text-lg"
-//                 >
-//                     +
-//                 </button>
-//             </div>
+            console.log("Server response:", response.data); // 调试信息
 
-//             {showModal && (
-//                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-//                     <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-//                         <h2 className="text-xl font-semibold mb-4">
-//                             {editingCategory ? 'Edit Category' : 'Add Category'}
-//                         </h2>
+            // 根据响应更新 UI
+            if (response.data.message === "Food updated successfully") {
+                alert("Food updated successfully!"); // 显示成功消息
+                fetchCategoriesWithFoods(); // 更新列表
+                setEditingFood(null);
+                setImagePreview(null);
+            } else {
+                alert("Failed to update food."); // 显示错误消息
+            }
+        } catch (error) {
+            console.error("Error updating food:", error);
+            alert("An error occurred while updating the food."); // 显示错误消息
+        }
+    };
 
-//                         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-//                             <input
-//                                 type="text"
-//                                 name="categoryName"
-//                                 value={category.categoryName}
-//                                 onChange={(e) => setCategory({ categoryName: e.target.value })}
-//                                 placeholder="Category Name"
-//                                 className="border p-2 rounded"
-//                                 required
-//                             />
+    const handleDelete = async (foodId: string) => {
+        try {
+            await axios.delete(`http://localhost:3030/foods/${foodId}`);
+            fetchCategoriesWithFoods();
+            setSelectedFood(null);
+            setDropdown(null);
+        } catch (error) {
+            console.error("Error deleting food:", error);
+        }
+    };
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
 
-//                             <div className="flex justify-end gap-2">
-//                                 <button
-//                                     type="button"
-//                                     className="bg-gray-400 text-white px-4 py-2 rounded"
-//                                     onClick={() => {
-//                                         setShowModal(false);
-//                                         setDropdown(null);
-//                                     }}
-//                                 >
-//                                     Cancel
-//                                 </button>
-//                                 <button
-//                                     type="submit"
-//                                     className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
-//                                     disabled={loading}
-//                                 >
-//                                     {loading ? (editingCategory ? 'Updating...' : 'Adding...') : editingCategory ? 'Update' : 'Add'}
-//                                 </button>
-//                             </div>
-//                         </form>
-//                     </div>
-//                 </div>
-//             )}
-//         </div>
-//     );
-// }
+        }
+    };
+
+    return (
+        <div className="p-4 bg-gray-100 max-w-[900px] w-[100%] m-auto rounded-2xl">
+            <h2 className="text-xl font-bold mb-4">Foods by Category</h2>
+            {categoriesWithFoods.length > 0 ? (
+                categoriesWithFoods.map((category) => (
+                    <div key={category._id} className="my-2 py-2">
+                        <h3 className="text-lg font-semibold">{category.categoryName}</h3>
+                        <div className="flex justify-between items-center">
+                            <div className="border-2 border-dashed w-1/4 border-red-500 rounded-xl">
+                                <button
+                                    onClick={() => setAddingCategory(category._id)}
+                                    className="flex flex-col items-center justify-center px-10 py-24 "
+                                >
+                                    <p
+                                        onClick={() => setShowAddFoodModal(true)}
+                                        className="flex flex-col items-center justify-center px-10 py-24"
+                                    >
+                                        <p className="bg-red-500 w-12 h-10 rounded-full text-white text-3xl py-2">+</p>
+                                        Add new dish to {category.categoryName}
+                                    </p>
+                                </button>
+                            </div>
+                            <ul className="grid grid-cols-3 gap-2">
+                                {category.foods?.map((food) => (
+                                    <div key={food._id} className="relative border border-gray-200 p-2 rounded-3xl bg-white">
+                                        {food.image && <img src={food.image} alt={food.foodName} className="h-40 w-60 px-2 rounded-3xl" />}
+                                        <div className="flex justify-between items-center">
+                                            <button
+                                                className="bg-white w-10 h-10 flex items-center justify-center rounded-full absolute bottom-[53%] right-[12%]"
+                                                onClick={() => setDropdown(dropdown === food._id ? null : food._id)}>
+                                                <PenIcon className="text-red-500 w-6 h-6" />
+                                            </button>
+                                        </div>
+                                        <div className="flex justify-between py-2">
+                                            <li className="text-red-500 font-bold px-2">{food.foodName}</li>
+                                            <li className="px-2">{food.price}₮</li>
+                                        </div>
+                                        <li className="text-[12px] px-2 pb-2">{food.ingredients}</li>
+
+                                        {dropdown === food._id && (
+                                            <div className="absolute top-12 right-0 bg-white shadow-lg rounded-lg p-2 w-40">
+                                                <button className="block px-3 py-1 text-blue-500 w-full text-left" onClick={() => handleEdit(food)}>
+                                                    Edit
+                                                </button>
+                                                {editingFood && (
+                                                    <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center gap-2 w-full">
+                                                        <div className="bg-white p-6 rounded-lg w-[90%] md:w-[60%] lg:w-[40%]">
+                                                            <h3 className="text-lg font-semibold">Edit Food</h3>
+                                                            <form
+                                                                onSubmit={(e) => {
+                                                                    e.preventDefault();
+                                                                    handleSave(editingFood);
+                                                                }}
+                                                            >
+                                                                <div className="flex gap-2 justify-between">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editingFood.foodName}
+                                                                        onChange={(e) =>
+                                                                            setEditingFood({ ...editingFood, foodName: e.target.value })
+                                                                        }
+                                                                        className="border p-2 w-full mb-2"
+                                                                    />
+                                                                    <input
+                                                                        type="number"
+                                                                        value={editingFood.price}
+                                                                        onChange={(e) =>
+                                                                            setEditingFood({ ...editingFood, price: parseFloat(e.target.value) })
+                                                                        }
+                                                                        className="border p-2 w-full mb-2"
+                                                                    />
+                                                                </div>
+                                                                <textarea
+                                                                    value={editingFood.ingredients}
+                                                                    onChange={(e) =>
+                                                                        setEditingFood({ ...editingFood, ingredients: e.target.value })
+                                                                    }
+                                                                    className="border p-2 w-full mb-2"
+                                                                />
+
+                                                                {/* Image preview or upload */}
+                                                                {imagePreview && (
+                                                                    <div className="mt-4 flex justify-center border">
+                                                                        <img src={imagePreview} alt="Preview" className="w-50 object-cover rounded" />
+                                                                    </div>
+                                                                )}
+                                                                <input
+                                                                    type="file"
+                                                                    name="image"
+                                                                    onChange={handleImageChange}
+                                                                    placeholder="Food Image"
+                                                                    className="border p-2  px-20 rounded mb-4"
+                                                                />
+                                                                <div className="flex justify-center">
+                                                                    <button type="submit" className="bg-blue-500 text-white p-2">
+                                                                        Save
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setEditingFood(null)}
+                                                                        className="bg-gray-500 text-white p-2 ml-2"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <button className="block px-3 py-1 text-red-500 w-full text-left" onClick={() => handleDelete(food._id)}>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                ))
+            ) : (
+                <p>Loading categories and foods...</p>
+            )
+            }
+        </div >
+    );
+}
